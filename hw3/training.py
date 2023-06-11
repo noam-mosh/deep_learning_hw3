@@ -35,15 +35,15 @@ class Trainer(abc.ABC):
         model.to(self.device)
 
     def fit(
-        self,
-        dl_train: DataLoader,
-        dl_test: DataLoader,
-        num_epochs,
-        checkpoints: str = None,
-        early_stopping: int = None,
-        print_every=1,
-        post_epoch_fn=None,
-        **kw,
+            self,
+            dl_train: DataLoader,
+            dl_test: DataLoader,
+            num_epochs,
+            checkpoints: str = None,
+            early_stopping: int = None,
+            print_every=1,
+            post_epoch_fn=None,
+            **kw,
     ) -> FitResult:
         """
         Trains the model for multiple epochs with a given training set,
@@ -84,7 +84,7 @@ class Trainer(abc.ABC):
             verbose = False  # pass this to train/test_epoch.
             if epoch % print_every == 0 or epoch == num_epochs - 1:
                 verbose = True
-            self._print(f"--- EPOCH {epoch+1}/{num_epochs} ---", verbose)
+            self._print(f"--- EPOCH {epoch + 1}/{num_epochs} ---", verbose)
 
             # TODO:
             #  Train & evaluate for one epoch
@@ -93,7 +93,7 @@ class Trainer(abc.ABC):
             #  - Implement early stopping. This is a very useful and
             #    simple regularization technique that is highly recommended.
             # ====== YOUR CODE: ======
-            
+
             raise NotImplementedError()
 
             # ========================
@@ -107,7 +107,7 @@ class Trainer(abc.ABC):
                 )
                 torch.save(saved_state, checkpoint_filename)
                 print(
-                    f"*** Saved checkpoint {checkpoint_filename} " f"at epoch {epoch+1}"
+                    f"*** Saved checkpoint {checkpoint_filename} " f"at epoch {epoch + 1}"
                 )
 
             if post_epoch_fn:
@@ -168,10 +168,10 @@ class Trainer(abc.ABC):
 
     @staticmethod
     def _foreach_batch(
-        dl: DataLoader,
-        forward_fn: Callable[[Any], BatchResult],
-        verbose=True,
-        max_batches=None,
+            dl: DataLoader,
+            forward_fn: Callable[[Any], BatchResult],
+            verbose=True,
+            max_batches=None,
     ) -> EpochResult:
         """
         Evaluates the given forward-function on batches from the given
@@ -223,16 +223,16 @@ class RNNTrainer(Trainer):
     def train_epoch(self, dl_train: DataLoader, **kw):
         # TODO: Implement modifications to the base method, if needed.
         # ====== YOUR CODE: ======
-        
-        self.hidden_state = None    
-            
+
+        self.hidden_state = None
+
         # ========================
         return super().train_epoch(dl_train, **kw)
 
     def test_epoch(self, dl_test: DataLoader, **kw):
         # TODO: Implement modifications to the base method, if needed.
         # ====== YOUR CODE: ======
-        self.hidden_state = None   
+        self.hidden_state = None
         # ========================
         return super().test_epoch(dl_test, **kw)
 
@@ -250,7 +250,21 @@ class RNNTrainer(Trainer):
         #  - Update params
         #  - Calculate number of correct char predictions
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+
+        # Forward pass
+        y_pred, h = self.model(x, self.h)
+        self.h = h.detach()
+
+        # Calculate loss
+        num_correct = torch.sum(torch.argmax(y_pred, dim=2) == y)
+
+        # Backward pass
+        self.optimizer.zero_grad()
+        loss = self.loss_fn(y_pred.transpose(1, 2), y)
+        loss.backward()
+
+        # Weight updates
+        self.optimizer.step()
         # ========================
 
         # Note: scaling num_correct by seq_len because each sample has seq_len
@@ -270,7 +284,15 @@ class RNNTrainer(Trainer):
             #  - Loss calculation
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+
+            # Forward pass
+            y_pred, self.h = self.model(x, self.h)
+
+            # Calculate loss
+            loss = self.loss_fn(y_pred.transpose(1, 2), y)
+
+            # Calculate number of correct predictions
+            num_correct = torch.sum(torch.argmax(y_pred, dim=2) == y)
             # ========================
 
         return BatchResult(loss.item(), num_correct.item() / seq_len)
@@ -294,20 +316,19 @@ class VAETrainer(Trainer):
         with torch.no_grad():
             # TODO: Evaluate a VAE on one batch.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()    
+            raise NotImplementedError()
             # ========================
 
         return BatchResult(loss.item(), 1 / data_loss.item())
 
 
 class TransformerEncoderTrainer(Trainer):
-    
+
     def train_batch(self, batch) -> BatchResult:
-        
         input_ids = batch['input_ids'].to(self.device)
         attention_mask = batch['attention_mask'].float().to(self.device)
         label = batch['label'].float().to(self.device)
-        
+
         loss = None
         num_correct = None
         # TODO:
@@ -315,55 +336,48 @@ class TransformerEncoderTrainer(Trainer):
         # ====== YOUR CODE: ======
         raise NotImplementedError()
         # ========================
-        
-        
-        
+
         return BatchResult(loss.item(), num_correct.item())
-        
+
     def test_batch(self, batch) -> BatchResult:
         with torch.no_grad():
             input_ids = batch['input_ids'].to(self.device)
             attention_mask = batch['attention_mask'].float().to(self.device)
             label = batch['label'].float().to(self.device)
-            
+
             loss = None
             num_correct = None
-            
+
             # TODO:
             #  fill out the testing loop.
             # ====== YOUR CODE: ======
             raise NotImplementedError()
             # ========================
 
-            
-        
         return BatchResult(loss.item(), num_correct.item())
 
 
-
 class FineTuningTrainer(Trainer):
-    
+
     def train_batch(self, batch) -> BatchResult:
-        
         input_ids = batch["input_ids"].to(self.device)
         attention_masks = batch["attention_mask"]
-        labels= batch["label"]
+        labels = batch["label"]
         # TODO:
         #  fill out the training loop.
         # ====== YOUR CODE: ======
 
         raise NotImplementedError()
-        
+
         # ========================
-        
+
         return BatchResult(loss, num_correct)
-        
+
     def test_batch(self, batch) -> BatchResult:
-        
         input_ids = batch["input_ids"].to(self.device)
         attention_masks = batch["attention_mask"]
-        labels= batch["label"]
-        
+        labels = batch["label"]
+
         with torch.no_grad():
             # TODO:
             #  fill out the training loop.
