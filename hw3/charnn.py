@@ -63,8 +63,12 @@ def chars_to_onehot(text: str, char_to_idx: dict) -> Tensor:
     """
     # TODO: Implement the embedding.
     # ====== YOUR CODE: ======
-    indices = torch.tensor([char_to_idx[c] for c in text])
-    result = nn.functional.one_hot(indices, num_classes=len(char_to_idx)).type(torch.int8)
+    # indices = torch.tensor([char_to_idx[c] for c in text])
+    # result = nn.functional.one_hot(indices, num_classes=len(char_to_idx)).type(torch.int8)
+
+    result = torch.zeros(size=(len(text),len(char_to_idx)), dtype=torch.int8)
+    for i in range(len(text)):
+        result[i][char_to_idx[text[i]]] = 1
     # ========================
     return result
 
