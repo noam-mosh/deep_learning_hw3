@@ -182,9 +182,9 @@ def generate_from_model(model, start_sequence, n_chars, char_maps, T):
         ht = None
 
         while len(out_text) < n_chars:
-            embedded = chars_to_onehot(xt, char_to_idx).float().to(device).unsqueeze(0)
+            embedded = chars_to_onehot(xt, char_to_idx).to(device).unsqueeze(0)
             yt, ht = model(embedded, ht)
-            probabilities = hot_softmax(yt.squeeze(0)[-1], temperature=T)
+            probabilities = hot_softmax(yt.squeeze(0), temperature=T)
             xt = idx_to_char[torch.multinomial(probabilities, 1).item()]
             out_text += xt
     # ========================
@@ -266,21 +266,7 @@ class MultilayerGRU(nn.Module):
         #      then call self.register_parameter() on them. Also make
         #      sure to initialize them. See functions in torch.nn.init.
         # ====== YOUR CODE: ======
-        linear_names = ['Wxz', 'Whz', 'Wxr', 'Whr', 'Wxg', 'Whg']
-        self.tanh = nn.Tanh()
-        self.sigmoid = nn.Sigmoid()
-        layers = self.n_layers
-        for layer in range(layers):
-            for k in range(3):
-                self.layer_params.append(nn.Linear(in_dim, h_dim, bias=True))
-                self.layer_params.append(nn.Linear(h_dim, h_dim, bias=False))
-            in_dim = h_dim
-        for layer in range(layers):
-            for k in range(6):
-                self.add_module(f'{linear_names[k]}{layer}', self.layer_params[layer * 6 + k])
-            in_dim = h_dim
-        self.dropout = nn.Dropout(p=dropout)
-        self.Wout = nn.Linear(h_dim, out_dim, bias=True)
+        raise NotImplementedError()
         # ========================
 
     def forward(self, input: Tensor, hidden_state: Tensor = None):
@@ -318,28 +304,6 @@ class MultilayerGRU(nn.Module):
         #  Tip: You can use torch.stack() to combine multiple tensors into a
         #  single tensor in a differentiable manner.
         # ====== YOUR CODE: ======
-        hidden_state = []
-        next_input = []
-
-        input_ = input
-        layers = self.n_layers
-        for layer in range(layers):
-            var = []
-            for k in range(6):
-                var.append(self.layer_params[layer * 6 + k])
-            h_curr = layer_states[layer]
-            for char in range(input.shape[1]):
-                c_input = input[:, char]
-                zkt = self.sigmoid(var[0](c_input) + var[1](h_curr))
-                rkt = self.sigmoid(var[2](c_input) + var[3](h_curr))
-                gkt = self.tanh(var[4](c_input) + var[5](h_curr * rkt))
-                h_curr = zkt * h_curr + (1 - zkt) * gkt
-                next_input.append(self.dropout(h_curr))
-            hidden_state.append(h_curr)
-            input = torch.stack(next_input, 1)
-            next_input = []
-
-        layer_output = self.Wout(input)
-        hidden_state = torch.stack(hidden_state, 1)
+        raise NotImplementedError()
         # ========================
         return layer_output, hidden_state

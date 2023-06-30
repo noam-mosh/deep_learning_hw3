@@ -33,7 +33,62 @@ def sliding_window_attention(q, k, v, window_size, padding_mask=None):
     #    (both for tokens that aren't in the window, and for tokens that correspond to padding according to the 'padding mask').
     # Aside from these two rules, you are free to implement the function as you wish. 
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    # Pad tokens and mask so that the sequence length will be divisible by window_size
+
+    # num_heads = q.shape[1] if (len(q.size()) < 3) else 1
+    # chunks_count = seq_len // window_size - 1
+    #
+    # q = q.transpose(1, 2).reshape(batch_size * num_heads, seq_len, embed_dim)
+    # k = k.transpose(1, 2).reshape(batch_size * num_heads, seq_len, embed_dim)
+    #
+    # q = q.view(q.size(0), q.size(1) // (window_size), window_size, q.size(2))
+    # k = k.view(k.size(0), k.size(1) // (window_size), window_size, k.size(2))
+    #
+    # # use `as_strided` to make the chunks overlap with an overlap size = w/2
+    # chunk_q = q.as_strided(size=list(q.size())[1] * 2 - 1, stride=list(q.stride())[1] // 2)
+    # chunk_k  = k.as_strided(size=list(k.size())[1] * 2 - 1, stride=list(k.stride())[1] // 2)
+    #
+    # # matrix multipication
+    # # bcxd: batch_size*num_heads x chunks x w x embed_dim
+    # # bcyd: batch_size*num_heads x chunks x w x embed_dim
+    # # bcxy: batch_size*num_heads x chunks x w x w
+    # chunk_attention = torch.einsum('bcxd,bcyd->bcxy', (chunk_q, chunk_k))  # multiply
+    #
+    # # convert diagonals into columns
+    # chunk_attention_padded = nn.functional.pad(chunk_attention, (0, 0, 0, 1))
+    # chunk_attention_padded = chunk_attention_padded.view(*chunk_attention_padded.size()[:-2], chunk_attention_padded.size(-1), chunk_attention_padded.size(-2))
+    #
+    # attention = chunk_attention_padded.new_empty((batch_size*num_heads, chunks_count+1, window_size/2, window_size+1))
+    #
+    # # copy parts from diagonal_chunk_attn into the compined matrix of attentions
+    # # - copying the main diagonal and the upper triangle
+    # attention[:, :-1, :, window_size/2:] = chunk_attention_padded[:, :, :window_size/2, :window_size/2 + 1]
+    # attention[:, -1, :, window_size/2:] = chunk_attention_padded[:, -1, window_size/2:, :window_size/2 + 1]
+    # # - copying the lower triangle
+    # attention[:, 1:, :, :window_size/2] = chunk_attention_padded[:, :, - (window_size/2 + 1):-1, window_size/2 + 1:]
+    # attention[:, 0, 1:window_size/2, 1:window_size/2] = chunk_attention_padded[:, 0, :window_size/2 - 1, 1 - window_size/2:]
+    #
+    # # separate bsz and num_heads dimensions again
+    # attention = attention.view(batch_size, num_heads, seq_len, window_size + 1).transpose(2, 1)
+    #
+    # mask_invalid_locations(attention, w, 1, False)
+    #
+    # attention = nn.functional.softmax(attention, dim=-1)
+    # values = torch.matmul(attention, v)
+
+    diagonal_mask = torch.zeros(size=(seq_len, seq_len), dtype=torch.bool)
+    i, j = diagonal_mask.shape
+    diagonal_mask[torch.abs(torch.arange(i)[:, None] - torch.arange(j)) <= window_size / 2] = True
+
+    B = torch.where(diagonal_mask, torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.shape[-1]),
+                    torch.tensor(-math.inf))
+
+    # TODO: padding???
+    if padding_mask is not None:
+        attention = B.masked_fill_(padding_mask, -9e15)
+    attention = nn.Softmax(dim=-1)(attention)
+    values = torch.matmul(attention, v)
+
     # ========================
 
 
@@ -80,7 +135,7 @@ class MultiHeadAttention(nn.Module):
         # TODO:
         # call the sliding window attention function you implemented
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        values, attention = sliding_window_attention(q, k, v, self.window_size, padding_mask)
         # ========================
 
         values = values.permute(0, 2, 1, 3) # [Batch, SeqLen, Head, Dims]
@@ -162,7 +217,12 @@ class EncoderLayer(nn.Module):
         #   3) Apply a feed-forward layer to the output of step 2, and then apply dropout again.
         #   4) Add a second residual connection and normalize again.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        residual = x
+        output = self.dropout(self.self_attn(x, padding_mask, return_attention=False))
+        normalized = self.norm1(output + residual)
+
+        output = self.dropout(self.feed_forward(normalized))
+        x = self.norm2(output + normalized)
         # ========================
         
         return x
@@ -212,8 +272,14 @@ class Encoder(nn.Module):
         #  5) Apply the classification MLP to the output vector corresponding to the special token [CLS] 
         #     (always the first token) to receive the logits.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
-        
+        embeddings = self.encoder_embedding(sentence)
+        positional_embeddings = self.dropout(self.positional_encoding(embeddings))
+
+        encoder_output = positional_embeddings
+        for encoder_layer in self.encoder_layers:
+            encoder_output = encoder_layer(encoder_output, padding_mask=padding_mask)
+
+        output = self.classification_mlp(encoder_output[:,0])
         # ========================
         
         

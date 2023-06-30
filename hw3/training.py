@@ -92,23 +92,9 @@ class Trainer(abc.ABC):
             #  - Save losses and accuracies in the lists above.
             #  - Implement early stopping. This is a very useful and
             #    simple regularization technique that is highly recommended.
-            # ====== YOUR CODE: =====
-            actual_num_epochs += 1
-            train_result = self.train_epoch(dl_train, verbose=verbose, **kw)
-            train_acc.append(train_result.accuracy)
-            train_loss.append(sum(train_result.losses) / len(train_result.losses))
-            test_result = self.test_epoch(dl_test, verbose=verbose, **kw)
-            test_acc.append(test_result.accuracy)
-            test_loss.append(sum(test_result.losses) / len(test_result.losses))
-            if best_acc is None or test_result.accuracy > best_acc:
-                epochs_without_improvement = 0
-                best_acc = test_result.accuracy
-                save_checkpoint = True
-            else:
-                if early_stopping is not None:
-                    epochs_without_improvement += 1
-                    if epochs_without_improvement == early_stopping:
-                        return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
+            # ====== YOUR CODE: ======
+
+            raise NotImplementedError()
 
             # ========================
 
@@ -266,8 +252,8 @@ class RNNTrainer(Trainer):
         # ====== YOUR CODE: ======
 
         # Forward pass
-        y_pred, h = self.model(x, self.hidden_state)
-        self.hidden_state = h.detach()
+        y_pred, h = self.model(x, self.h)
+        self.h = h.detach()
 
         # Calculate loss
         num_correct = torch.sum(torch.argmax(y_pred, dim=2) == y)
@@ -300,7 +286,7 @@ class RNNTrainer(Trainer):
             # ====== YOUR CODE: ======
 
             # Forward pass
-            y_pred, self.hidden_state = self.model(x, self.hidden_state)
+            y_pred, self.h = self.model(x, self.h)
 
             # Calculate loss
             loss = self.loss_fn(y_pred.transpose(1, 2), y)
@@ -318,11 +304,7 @@ class VAETrainer(Trainer):
         x = x.to(self.device)  # Image batch (N,C,H,W)
         # TODO: Train a VAE on one batch.
         # ====== YOUR CODE: ======
-        xr, z_mu, z_log_sigma2 = self.model(x)
-        loss, data_loss, kldiv_loss = self.loss_fn(x, xr, z_mu, z_log_sigma2)
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        raise NotImplementedError()
         # ========================
 
         return BatchResult(loss.item(), 1 / data_loss.item())
@@ -334,8 +316,7 @@ class VAETrainer(Trainer):
         with torch.no_grad():
             # TODO: Evaluate a VAE on one batch.
             # ====== YOUR CODE: ======
-            xr, z_mu, z_log_sigma2 = self.model(x)
-            loss, data_loss, kldiv_loss = self.loss_fn(x, xr, z_mu, z_log_sigma2)
+            raise NotImplementedError()
             # ========================
 
         return BatchResult(loss.item(), 1 / data_loss.item())
@@ -353,7 +334,21 @@ class TransformerEncoderTrainer(Trainer):
         # TODO:
         #  fill out the training loop.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # Forward pass
+        y_pred = self.model.predict(input_ids, attention_mask)
+
+        # Calculate loss
+        self.optimizer.zero_grad()
+        loss = self.loss_fn(y_pred, label)
+
+        # Calculate number of correct predictions
+        num_correct = torch.sum(y_pred == label)
+
+        # Backward pass
+        loss.backward()
+
+        # Weight updates
+        self.optimizer.step()
         # ========================
 
         return BatchResult(loss.item(), num_correct.item())
@@ -370,7 +365,14 @@ class TransformerEncoderTrainer(Trainer):
             # TODO:
             #  fill out the testing loop.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            # Forward pass
+            y_pred = self.model.predict(input_ids, attention_mask)
+
+            # Calculate loss
+            loss = self.loss_fn(y_pred, label)
+
+            # Calculate number of correct predictions
+            num_correct = torch.sum(y_pred == label)
             # ========================
 
         return BatchResult(loss.item(), num_correct.item())
