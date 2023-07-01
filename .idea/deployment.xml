@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData">
+  <component name="PublishConfigData" autoUpload="Always" serverName="Lambda5" autoUploadExternalChanges="true">
     <serverData>
       <paths name="Copy of project-level server 'GipMed-Project'">
         <serverdata>
@@ -19,10 +19,11 @@
       <paths name="Lambda5">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/home/noam.moshe/deep_learning/hw3" local="$PROJECT_DIR$" />
           </mappings>
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>
