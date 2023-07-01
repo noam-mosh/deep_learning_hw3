@@ -60,15 +60,16 @@ Secondly, splitting the corpus into sequences enables processing of multiple seq
 and speeding up convergence.
 
 
-Moreover, splitting the corpus into smaller sequences might help with generalization, since we get shorter 
+Moreover, splitting the corpus into smaller sequences might help with generalization, since it results in shorter 
 backward passes, which result in more local learned features. Training on the whole corpus at once may bias 
 the model towards patterns in the opening or in the closing of the corpus.
 
 
-Lastly, it might also aid with exploding/vanishing gradients: the structure of RNNs enforces that during backpropagation 
-the downstream gradient flows back across time steps, which results in multiplying it over and over again by the same weight matrix.
-So it is simple to understang that for long sequences, if the singular value of that weight matrix is greater than 1, 
-the downstream gradient will "explode", and if less than 1, the downstream gradient "vanish"
+Lastly, it might also aid with exploding/vanishing gradients: the structure of RNNs enforces that during 
+downstream gradient flows back across time steps, it means the computation happens over and over again at every time step.
+multiplying over and over again by the same weight matrix, the gradient will be scaled up or down depending on the largest singular value of the matrix: if the singular value is greater than 1, we’ll face an exploding gradient problem, and if it’s less than 1, we’ll face a vanishing gradient problem.
+thorough large amounts of gradients
+in the backpropagation process is known to increase the risk of these phenomenons.
 """
 
 part1_q2 = r"""

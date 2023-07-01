@@ -382,27 +382,47 @@ class FineTuningTrainer(Trainer):
 
     def train_batch(self, batch) -> BatchResult:
         input_ids = batch["input_ids"].to(self.device)
-        attention_masks = batch["attention_mask"]
-        labels = batch["label"]
+        attention_masks = batch["attention_mask"].to(self.device)
+        labels = batch["label"].to(self.device)
         # TODO:
         #  fill out the training loop.
         # ====== YOUR CODE: ======
+        self.optimizer.zero_grad()
 
-        raise NotImplementedError()
+        # Forward pass
+        outputs = self.model(input_ids=input_ids, attention_mask=attention_masks, labels=labels)
+        logits = outputs.logits
+        loss = outputs.loss
 
+        # Backward pass
+        loss.backward()
+        self.optimizer.step()
+
+        # Calculate number of correct predictions
+        logits = logits.detach()
+        predictions = torch.argmax(logits, dim=-1)
+        num_correct = torch.sum(predictions == labels)
         # ========================
 
-        return BatchResult(loss, num_correct)
+        return BatchResult(loss.item(), num_correct.item())
 
     def test_batch(self, batch) -> BatchResult:
         input_ids = batch["input_ids"].to(self.device)
-        attention_masks = batch["attention_mask"]
-        labels = batch["label"]
+        attention_masks = batch["attention_mask"].to(self.device)
+        labels = batch["label"].to(self.device)
 
         with torch.no_grad():
             # TODO:
             #  fill out the training loop.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+
+            # Forward pass
+            outputs = self.model(input_ids=input_ids, attention_mask=attention_masks, labels=labels)
+            logits = outputs.logits
+            loss = outputs.loss
+
+            # Calculate number of correct predictions
+            predictions = torch.argmax(logits, dim=-1)
+            num_correct = torch.sum(predictions == labels)
             # ========================
-        return BatchResult(loss, num_correct)
+        return BatchResult(loss.item(), num_correct.item())
